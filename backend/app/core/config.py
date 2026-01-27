@@ -25,12 +25,14 @@ class Settings(BaseSettings):
 
     # Application
     debug: bool = False
-    cors_origins: List[str] = ["http://localhost:5173", "http://localhost:3000"]
+    cors_origins: Union[str, List[str]] = ["http://localhost:5173", "http://localhost:3000"]
 
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
         if isinstance(v, str):
+            if not v.strip():
+                return ["http://localhost:5173", "http://localhost:3000"]
             # Try JSON first, then comma-separated
             try:
                 return json.loads(v)
