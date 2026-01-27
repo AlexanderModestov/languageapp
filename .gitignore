@@ -3,8 +3,13 @@
 
 # Virtual environments
 backend/.venv/
-backend/.worktrees
 
-frontend/node_modules
+# Python
+__pycache__/
 
+# Node
+frontend/node_modules/
+
+# Worktrees
 .worktrees
+commands.txt
