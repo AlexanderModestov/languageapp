@@ -1,0 +1,10 @@
+# Environment
+*/.env
+
+# Virtual environments
+backend/.venv/
+backend/.worktrees
+
+frontend/node_modules
+
+.worktrees
