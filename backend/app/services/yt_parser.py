@@ -1,8 +1,43 @@
+import base64
 import logging
 import os
 import re
 import tempfile
 from typing import Optional
+
+# Global path for decoded cookies file
+_cookies_file_path: Optional[str] = None
+
+
+def get_cookies_file_path() -> Optional[str]:
+    """Get path to cookies file, decoding from base64 env var if needed."""
+    global _cookies_file_path
+
+    if _cookies_file_path and os.path.exists(_cookies_file_path):
+        return _cookies_file_path
+
+    from app.core.config import get_settings
+    settings = get_settings()
+
+    # If direct file path is configured, use it
+    if settings.youtube_cookies_file and os.path.exists(settings.youtube_cookies_file):
+        return settings.youtube_cookies_file
+
+    # If base64 encoded cookies are provided, decode and write to temp file
+    if settings.youtube_cookies_base64:
+        try:
+            cookies_data = base64.b64decode(settings.youtube_cookies_base64)
+            temp_dir = tempfile.gettempdir()
+            _cookies_file_path = os.path.join(temp_dir, "youtube_cookies.txt")
+            with open(_cookies_file_path, "wb") as f:
+                f.write(cookies_data)
+            logger.info(f"Decoded YouTube cookies to {_cookies_file_path}")
+            return _cookies_file_path
+        except Exception as e:
+            logger.error(f"Failed to decode YouTube cookies: {e}")
+            return None
+
+    return None
 
 from openai import OpenAI
 from youtube_transcript_api import (
@@ -33,11 +68,39 @@ def extract_video_id(url: str) -> Optional[str]:
 def get_transcript_from_api(video_id: str) -> Optional[str]:
     """Try to get transcript using YouTube Transcript API."""
     try:
-        transcript_list = YouTubeTranscriptApi.get_transcript(
-            video_id, languages=["en", "en-US", "en-GB"]
-        )
-        # Consolidate transcript segments into a single string
-        text = " ".join(segment["text"] for segment in transcript_list)
+        # First try to get any available transcript
+        transcript_list_obj = YouTubeTranscriptApi.list_transcripts(video_id)
+
+        # Try to find a transcript, preferring English but accepting any language
+        transcript = None
+        try:
+            # Try English first
+            transcript = transcript_list_obj.find_transcript(["en", "en-US", "en-GB"])
+        except NoTranscriptFound:
+            # Fall back to any available transcript
+            try:
+                # Try manually created transcripts first
+                for t in transcript_list_obj:
+                    if not t.is_generated:
+                        transcript = t
+                        logger.info(f"Using manual transcript in {t.language} for {video_id}")
+                        break
+                # If no manual, use auto-generated
+                if transcript is None:
+                    for t in transcript_list_obj:
+                        transcript = t
+                        logger.info(f"Using auto-generated transcript in {t.language} for {video_id}")
+                        break
+            except Exception:
+                pass
+
+        if transcript is None:
+            logger.warning(f"No transcript found for {video_id}")
+            return None
+
+        # Fetch the actual transcript data
+        transcript_data = transcript.fetch()
+        text = " ".join(segment["text"] for segment in transcript_data)
         return text.strip()
     except (NoTranscriptFound, TranscriptsDisabled) as e:
         logger.warning(f"No transcript available via API for {video_id}: {e}")
@@ -172,6 +235,12 @@ def transcribe_with_whisper(video_id: str) -> Optional[str]:
                     "quiet": False,
                     "no_warnings": False,
                 }
+
+            # Add cookies if configured (helps bypass YouTube bot detection)
+            cookies_path = get_cookies_file_path()
+            if cookies_path:
+                ydl_opts["cookiefile"] = cookies_path
+                logger.info("Using YouTube cookies file for authentication")
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(

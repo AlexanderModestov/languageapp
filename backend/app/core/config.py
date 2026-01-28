@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     # OpenAI
     openai_api_key: str
 
+    # YouTube (optional - for bypassing bot detection)
+    youtube_cookies_file: str = ""  # Path to Netscape format cookies.txt file
+    youtube_cookies_base64: str = ""  # Base64 encoded cookies (for cloud deployment)
+
     # Application
     debug: bool = False
     cors_origins: Union[str, List[str]] = ["http://localhost:5173", "http://localhost:3000"]
