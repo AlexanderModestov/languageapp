@@ -5,6 +5,7 @@ import type { Quiz, QuizResult } from "@/lib/api"
 import { quizzesApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
+import { UpgradeBanner } from "./UpgradeBanner"
 import { Button } from "./ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
 
@@ -21,16 +22,23 @@ export function QuizComponent({ materialId, onClose }: QuizProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [limitReached, setLimitReached] = useState(false)
 
   const generateQuiz = async (numQuestions: number) => {
     setIsGenerating(true)
     setError(null)
+    setLimitReached(false)
     try {
       const newQuiz = await quizzesApi.create(materialId, numQuestions)
       setQuiz(newQuiz)
       setAnswers(new Array(newQuiz.questions.length).fill(""))
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to generate quiz")
+      const errorMessage = e instanceof Error ? e.message : "Failed to generate quiz"
+      if (errorMessage.includes("QUIZ_LIMIT_REACHED") || errorMessage.includes("quiz limit")) {
+        setLimitReached(true)
+      } else {
+        setError(errorMessage)
+      }
     } finally {
       setIsGenerating(false)
     }
@@ -66,23 +74,30 @@ export function QuizComponent({ materialId, onClose }: QuizProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {limitReached && (
+            <UpgradeBanner variant="quiz" />
+          )}
           {error && (
             <p className="text-sm text-destructive">{error}</p>
           )}
-          <p className="text-sm text-muted-foreground">
-            Choose the number of questions:
-          </p>
-          <div className="flex gap-2">
-            {[3, 5, 10].map((num) => (
-              <Button
-                key={num}
-                variant="outline"
-                onClick={() => generateQuiz(num)}
-              >
-                {num} Questions
-              </Button>
-            ))}
-          </div>
+          {!limitReached && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Choose the number of questions:
+              </p>
+              <div className="flex gap-2">
+                {[3, 5, 10].map((num) => (
+                  <Button
+                    key={num}
+                    variant="outline"
+                    onClick={() => generateQuiz(num)}
+                  >
+                    {num} Questions
+                  </Button>
+                ))}
+              </div>
+            </>
+          )}
           <Button variant="ghost" onClick={onClose} className="w-full mt-4">
             Cancel
           </Button>

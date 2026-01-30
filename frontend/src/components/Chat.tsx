@@ -5,6 +5,7 @@ import type { ChatMessage } from "@/lib/api"
 import { chatApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
+import { UpgradeBanner } from "./UpgradeBanner"
 import { Button } from "./ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 
@@ -19,6 +20,7 @@ export function ChatComponent({ materialId, materialTitle }: ChatProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [accessDenied, setAccessDenied] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -31,11 +33,17 @@ export function ChatComponent({ materialId, materialTitle }: ChatProps) {
 
   const loadHistory = async () => {
     setIsFetching(true)
+    setAccessDenied(false)
     try {
       const history = await chatApi.getHistory(materialId)
       setMessages(history)
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load chat history")
+      const errorMessage = e instanceof Error ? e.message : "Failed to load chat history"
+      if (errorMessage.includes("CHAT_ACCESS_DENIED") || errorMessage.includes("Pro feature")) {
+        setAccessDenied(true)
+      } else {
+        setError(errorMessage)
+      }
     } finally {
       setIsFetching(false)
     }
@@ -95,6 +103,16 @@ export function ChatComponent({ materialId, materialTitle }: ChatProps) {
     return (
       <Card className="w-full h-[500px] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </Card>
+    )
+  }
+
+  if (accessDenied) {
+    return (
+      <Card className="w-full">
+        <CardContent className="py-8">
+          <UpgradeBanner variant="chat" />
+        </CardContent>
       </Card>
     )
   }

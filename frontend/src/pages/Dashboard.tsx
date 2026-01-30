@@ -3,11 +3,13 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 
 import { Layout } from "@/components/Layout"
+import { UpgradeBanner } from "@/components/UpgradeBanner"
 import { UploadModal } from "@/components/UploadModal"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useCardStats } from "@/hooks/useCards"
 import { useMaterials } from "@/hooks/useMaterials"
+import { useSubscription } from "@/hooks/useSubscription"
 import type { Material } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -63,10 +65,19 @@ export function Dashboard() {
   const [showUpload, setShowUpload] = useState(false)
   const { data: materials, isLoading: materialsLoading } = useMaterials()
   const { data: stats, isLoading: statsLoading } = useCardStats()
+  const { data: subscription } = useSubscription()
+
+  const isAtUploadLimit =
+    subscription &&
+    subscription.tier === "free" &&
+    subscription.uploads_this_week >= subscription.upload_limit
 
   return (
     <Layout>
       <div className="space-y-6">
+        {/* Upgrade Banner */}
+        {isAtUploadLimit && <UpgradeBanner variant="upload" />}
+
         {/* Stats Section */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card>

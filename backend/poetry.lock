@@ -4942,6 +4942,25 @@ files = [
 python-dateutil = ">=2.6.0"
 
 [[package]]
+name = "stripe"
+version = "14.3.0"
+description = "Python bindings for the Stripe API"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "stripe-14.3.0-py3-none-any.whl", hash = "sha256:3e36b68b256c8970e99b703e195d947e2a2919095758788c7074ac4485ac255e"},
+    {file = "stripe-14.3.0.tar.gz", hash = "sha256:4c76137d741bd43e8bb433a596c198ca20f4cdf17a8fe04604faf37c74b01978"},
+]
+
+[package.dependencies]
+requests = {version = ">=2.20", markers = "python_version >= \"3.0\""}
+typing_extensions = {version = ">=4.5.0", markers = "python_version >= \"3.7\""}
+
+[package.extras]
+async = ["httpx"]
+
+[[package]]
 name = "supabase"
 version = "2.27.2"
 description = "Supabase client for Python."
@@ -6240,4 +6259,4 @@ test = ["pytest (>=8.1,<9.0)", "pytest-rerunfailures (>=14.0,<15.0)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "c892c41a0d3f76cecd7fd1ebb9581a7a1cebf4df598561d3dc6e3e761f3a801e"
+content-hash = "0cbd3ce6838122c2cc9b5d6c9a98cf3b679416243b153aa9037f9a75f46c06a2"
