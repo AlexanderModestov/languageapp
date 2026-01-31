@@ -1,4 +1,4 @@
-import { BookOpen, FileText, Loader2, Plus, Youtube } from "lucide-react"
+import { BookOpen, FileText, Loader2, Plus, Sparkles, TrendingUp, Youtube } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 
@@ -11,48 +11,88 @@ import { useMaterials } from "@/hooks/useMaterials"
 import type { Material } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
-function MaterialCard({ material }: { material: Material }) {
-  const statusColors = {
-    pending: "bg-yellow-100 text-yellow-800",
-    processing: "bg-blue-100 text-blue-800",
-    completed: "bg-green-100 text-green-800",
-    failed: "bg-red-100 text-red-800",
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  color,
+  delay,
+}: {
+  label: string
+  value: number | string
+  icon: React.ElementType
+  color: string
+  delay: number
+}) {
+  return (
+    <Card
+      className="card-interactive overflow-hidden"
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardDescription className="text-sm font-medium">{label}</CardDescription>
+          <div className={cn("p-2 rounded-lg", color)}>
+            <Icon className="h-4 w-4" />
+          </div>
+        </div>
+        <CardTitle className="text-3xl font-bold tracking-tight">{value}</CardTitle>
+      </CardHeader>
+    </Card>
+  )
+}
+
+function MaterialCard({ material, index }: { material: Material; index: number }) {
+  const statusConfig = {
+    pending: { badge: "badge badge-warning", label: "Pending" },
+    processing: { badge: "badge badge-info", label: "Processing..." },
+    completed: { badge: "badge badge-success", label: "Ready" },
+    failed: { badge: "badge badge-destructive", label: "Failed" },
   }
 
-  const statusLabels = {
-    pending: "Pending",
-    processing: "Processing...",
-    completed: "Ready",
-    failed: "Failed",
-  }
+  const config = statusConfig[material.processing_status]
 
   return (
-    <Link to={`/material/${material.id}`}>
-      <Card className="hover:shadow-md transition-shadow cursor-pointer">
-        <CardHeader className="pb-2">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2">
-              {material.source_type === "youtube" ? (
-                <Youtube className="h-5 w-5 text-red-500" />
-              ) : (
-                <FileText className="h-5 w-5 text-blue-500" />
-              )}
-              <CardTitle className="text-lg line-clamp-1">{material.title}</CardTitle>
+    <Link
+      to={`/material/${material.id}`}
+      className="block"
+      style={{ animationDelay: `${index * 60}ms` }}
+    >
+      <Card className="card-interactive h-full">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className={cn(
+                  "flex-shrink-0 p-2 rounded-lg",
+                  material.source_type === "youtube"
+                    ? "bg-red-50 dark:bg-red-950"
+                    : "bg-indigo-50 dark:bg-indigo-950"
+                )}
+              >
+                {material.source_type === "youtube" ? (
+                  <Youtube className="h-4 w-4 text-red-500" />
+                ) : (
+                  <FileText className="h-4 w-4 text-indigo-500" />
+                )}
+              </div>
+              <CardTitle className="text-base font-semibold line-clamp-2 leading-tight">
+                {material.title}
+              </CardTitle>
             </div>
-            <span
-              className={cn(
-                "text-xs font-medium px-2 py-1 rounded-full",
-                statusColors[material.processing_status]
-              )}
-            >
-              {statusLabels[material.processing_status]}
-            </span>
           </div>
         </CardHeader>
-        <CardContent>
-          <CardDescription className="text-xs">
-            Added {new Date(material.created_at).toLocaleDateString()}
-          </CardDescription>
+        <CardContent className="pt-0">
+          <div className="flex items-center justify-between">
+            <CardDescription className="text-xs">
+              {new Date(material.created_at).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </CardDescription>
+            <span className={config.badge}>{config.label}</span>
+          </div>
         </CardContent>
       </Card>
     </Link>
@@ -64,54 +104,68 @@ export function Dashboard() {
   const { data: materials, isLoading: materialsLoading } = useMaterials()
   const { data: stats, isLoading: statsLoading } = useCardStats()
 
+  const statCards = [
+    {
+      label: "Total Cards",
+      value: statsLoading ? "-" : stats?.total_cards ?? 0,
+      icon: FileText,
+      color: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400",
+    },
+    {
+      label: "Due for Review",
+      value: statsLoading ? "-" : stats?.due_for_review ?? 0,
+      icon: TrendingUp,
+      color: "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400",
+    },
+    {
+      label: "Learning",
+      value: statsLoading ? "-" : stats?.learning ?? 0,
+      icon: BookOpen,
+      color: "bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400",
+    },
+    {
+      label: "Mastered",
+      value: statsLoading ? "-" : stats?.mastered ?? 0,
+      icon: Sparkles,
+      color: "bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400",
+    },
+  ]
+
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-8">
+        {/* Page Header */}
+        <div className="animate-fade-up">
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">Track your learning progress</p>
+        </div>
+
         {/* Stats Section */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Cards</CardDescription>
-              <CardTitle className="text-3xl">
-                {statsLoading ? "-" : stats?.total_cards ?? 0}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Due for Review</CardDescription>
-              <CardTitle className="text-3xl text-orange-600">
-                {statsLoading ? "-" : stats?.due_for_review ?? 0}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Learning</CardDescription>
-              <CardTitle className="text-3xl text-blue-600">
-                {statsLoading ? "-" : stats?.learning ?? 0}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Mastered</CardDescription>
-              <CardTitle className="text-3xl text-green-600">
-                {statsLoading ? "-" : stats?.mastered ?? 0}
-              </CardTitle>
-            </CardHeader>
-          </Card>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger-children">
+          {statCards.map((stat, index) => (
+            <StatCard
+              key={stat.label}
+              label={stat.label}
+              value={stat.value}
+              icon={stat.icon}
+              color={stat.color}
+              delay={index * 60}
+            />
+          ))}
         </div>
 
         {/* Quick Actions */}
-        <div className="flex gap-4">
-          <Button onClick={() => setShowUpload(true)}>
+        <div
+          className="flex flex-wrap gap-3 animate-fade-up"
+          style={{ animationDelay: "200ms" }}
+        >
+          <Button onClick={() => setShowUpload(true)} className="hover-scale">
             <Plus className="h-4 w-4 mr-2" />
             Add Content
           </Button>
           {stats && stats.due_for_review > 0 && (
             <Link to="/study">
-              <Button variant="secondary">
+              <Button variant="secondary" className="hover-scale">
                 <BookOpen className="h-4 w-4 mr-2" />
                 Study ({stats.due_for_review} cards)
               </Button>
@@ -120,29 +174,46 @@ export function Dashboard() {
         </div>
 
         {/* Materials List */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Recent Content</h2>
+        <div
+          className="animate-fade-up"
+          style={{ animationDelay: "300ms" }}
+        >
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl font-semibold tracking-tight">Recent Content</h2>
+            {materials && materials.length > 0 && (
+              <Link
+                to="/library"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                View all
+              </Link>
+            )}
+          </div>
+
           {materialsLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+              <p className="text-sm text-muted-foreground">Loading your content...</p>
             </div>
           ) : materials && materials.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {materials.map((material) => (
-                <MaterialCard key={material.id} material={material} />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
+              {materials.slice(0, 6).map((material, index) => (
+                <MaterialCard key={material.id} material={material} index={index} />
               ))}
             </div>
           ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No content yet</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  Add your first YouTube video or document to start learning
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="p-4 rounded-full bg-muted mb-4">
+                  <BookOpen className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No content yet</h3>
+                <p className="text-muted-foreground text-center mb-6 max-w-sm">
+                  Add your first YouTube video or document to start learning with AI-generated flashcards
                 </p>
-                <Button onClick={() => setShowUpload(true)}>
+                <Button onClick={() => setShowUpload(true)} className="hover-scale">
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Content
+                  Add Your First Content
                 </Button>
               </CardContent>
             </Card>

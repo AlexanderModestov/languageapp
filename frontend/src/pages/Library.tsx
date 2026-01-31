@@ -1,4 +1,4 @@
-import { FileText, Loader2, Plus, Search, Youtube } from "lucide-react"
+import { FileText, FolderOpen, Loader2, Plus, Search, Youtube } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 
@@ -14,48 +14,57 @@ import { cn } from "@/lib/utils"
 type SourceFilter = "all" | "youtube" | "file"
 type StatusFilter = "all" | "pending" | "processing" | "completed" | "failed"
 
-const statusColors = {
-  pending: "bg-yellow-100 text-yellow-800",
-  processing: "bg-blue-100 text-blue-800",
-  completed: "bg-green-100 text-green-800",
-  failed: "bg-red-100 text-red-800",
+const statusConfig = {
+  pending: { badge: "badge badge-warning", label: "Pending" },
+  processing: { badge: "badge badge-info", label: "Processing..." },
+  completed: { badge: "badge badge-success", label: "Ready" },
+  failed: { badge: "badge badge-destructive", label: "Failed" },
 }
 
-const statusLabels = {
-  pending: "Pending",
-  processing: "Processing...",
-  completed: "Ready",
-  failed: "Failed",
-}
+function MaterialCard({ material, index }: { material: Material; index: number }) {
+  const config = statusConfig[material.processing_status]
 
-function MaterialCard({ material }: { material: Material }) {
   return (
-    <Link to={`/material/${material.id}`}>
-      <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-        <CardHeader className="pb-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              {material.source_type === "youtube" ? (
-                <Youtube className="h-5 w-5 text-red-500 flex-shrink-0" />
-              ) : (
-                <FileText className="h-5 w-5 text-blue-500 flex-shrink-0" />
-              )}
-              <CardTitle className="text-lg line-clamp-2">{material.title}</CardTitle>
+    <Link
+      to={`/material/${material.id}`}
+      className="block"
+      style={{ animationDelay: `${index * 50}ms` }}
+    >
+      <Card className="card-interactive h-full">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className={cn(
+                  "flex-shrink-0 p-2 rounded-lg",
+                  material.source_type === "youtube"
+                    ? "bg-red-50 dark:bg-red-950"
+                    : "bg-indigo-50 dark:bg-indigo-950"
+                )}
+              >
+                {material.source_type === "youtube" ? (
+                  <Youtube className="h-4 w-4 text-red-500" />
+                ) : (
+                  <FileText className="h-4 w-4 text-indigo-500" />
+                )}
+              </div>
+              <CardTitle className="text-base font-semibold line-clamp-2 leading-tight">
+                {material.title}
+              </CardTitle>
             </div>
-            <span
-              className={cn(
-                "text-xs font-medium px-2 py-1 rounded-full flex-shrink-0",
-                statusColors[material.processing_status]
-              )}
-            >
-              {statusLabels[material.processing_status]}
-            </span>
           </div>
         </CardHeader>
-        <CardContent>
-          <CardDescription className="text-xs">
-            Added {new Date(material.created_at).toLocaleDateString()}
-          </CardDescription>
+        <CardContent className="pt-0">
+          <div className="flex items-center justify-between">
+            <CardDescription className="text-xs">
+              {new Date(material.created_at).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </CardDescription>
+            <span className={config.badge}>{config.label}</span>
+          </div>
         </CardContent>
       </Card>
     </Link>
@@ -75,10 +84,10 @@ function FilterButton({
     <button
       onClick={onClick}
       className={cn(
-        "px-3 py-1.5 text-sm rounded-full transition-colors",
+        "px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-200",
         active
-          ? "bg-primary text-primary-foreground"
-          : "bg-muted text-muted-foreground hover:bg-muted/80"
+          ? "bg-primary text-primary-foreground shadow-sm"
+          : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
       )}
     >
       {children}
@@ -98,21 +107,15 @@ export function Library() {
     if (!materials) return []
 
     return materials.filter((material) => {
-      // Search filter
       if (search && !material.title.toLowerCase().includes(search.toLowerCase())) {
         return false
       }
-
-      // Source type filter
       if (sourceFilter !== "all" && material.source_type !== sourceFilter) {
         return false
       }
-
-      // Status filter
       if (statusFilter !== "all" && material.processing_status !== statusFilter) {
         return false
       }
-
       return true
     })
   }, [materials, search, sourceFilter, statusFilter])
@@ -128,23 +131,28 @@ export function Library() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-up"
+        >
           <div>
-            <h1 className="text-2xl font-bold">Library</h1>
-            <p className="text-muted-foreground">
+            <h1 className="page-title">Library</h1>
+            <p className="page-subtitle">
               {counts.total} items ({counts.youtube} videos, {counts.file} documents)
             </p>
           </div>
-          <Button onClick={() => setShowUpload(true)}>
+          <Button onClick={() => setShowUpload(true)} className="hover-scale">
             <Plus className="h-4 w-4 mr-2" />
             Add Content
           </Button>
         </div>
 
         {/* Search and Filters */}
-        <div className="space-y-4">
+        <div
+          className="space-y-4 animate-fade-up"
+          style={{ animationDelay: "100ms" }}
+        >
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -152,16 +160,16 @@ export function Library() {
               placeholder="Search by title..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              className="pl-10 h-11"
             />
           </div>
 
           {/* Filters */}
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-6">
             {/* Source Type Filter */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Type:</span>
-              <div className="flex gap-1">
+              <span className="text-sm font-medium text-muted-foreground">Type:</span>
+              <div className="flex gap-1.5">
                 <FilterButton
                   active={sourceFilter === "all"}
                   onClick={() => setSourceFilter("all")}
@@ -185,8 +193,8 @@ export function Library() {
 
             {/* Status Filter */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Status:</span>
-              <div className="flex gap-1">
+              <span className="text-sm font-medium text-muted-foreground">Status:</span>
+              <div className="flex gap-1.5 flex-wrap">
                 <FilterButton
                   active={statusFilter === "all"}
                   onClick={() => setStatusFilter("all")}
@@ -223,41 +231,51 @@ export function Library() {
         </div>
 
         {/* Materials Grid */}
-        {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : filteredMaterials.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredMaterials.map((material) => (
-              <MaterialCard key={material.id} material={material} />
-            ))}
-          </div>
-        ) : materials && materials.length > 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Search className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No matches found</h3>
-              <p className="text-muted-foreground text-center">
-                Try adjusting your search or filters
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">Your library is empty</h3>
-              <p className="text-muted-foreground text-center mb-4">
-                Add YouTube videos or documents to start learning
-              </p>
-              <Button onClick={() => setShowUpload(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Content
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        <div
+          className="animate-fade-up"
+          style={{ animationDelay: "200ms" }}
+        >
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+              <p className="text-sm text-muted-foreground">Loading your library...</p>
+            </div>
+          ) : filteredMaterials.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
+              {filteredMaterials.map((material, index) => (
+                <MaterialCard key={material.id} material={material} index={index} />
+              ))}
+            </div>
+          ) : materials && materials.length > 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="p-4 rounded-full bg-muted mb-4">
+                  <Search className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No matches found</h3>
+                <p className="text-muted-foreground text-center max-w-sm">
+                  Try adjusting your search or filters to find what you're looking for
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="p-4 rounded-full bg-muted mb-4">
+                  <FolderOpen className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Your library is empty</h3>
+                <p className="text-muted-foreground text-center mb-6 max-w-sm">
+                  Add YouTube videos or documents to start building your vocabulary
+                </p>
+                <Button onClick={() => setShowUpload(true)} className="hover-scale">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Your First Content
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
 
       {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
