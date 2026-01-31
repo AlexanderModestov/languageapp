@@ -1,11 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
+import { useAuth } from "@/hooks/useAuth"
 import { subscriptionApi } from "@/lib/api"
 
 export function useSubscription() {
+  const { isAuthenticated } = useAuth()
+
   return useQuery({
     queryKey: ["subscription"],
     queryFn: subscriptionApi.get,
+    enabled: isAuthenticated,
   })
 }
 
