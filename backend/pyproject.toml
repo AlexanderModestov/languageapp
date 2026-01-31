@@ -24,6 +24,13 @@ stripe = "^14.3.0"
 pytest = "^8.0.0"
 pytest-asyncio = "^0.23.0"
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

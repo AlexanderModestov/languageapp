@@ -20,7 +20,7 @@ def get_or_create_subscription(user_id: UUID, supabase: Client) -> dict:
         .execute()
     )
 
-    if result.data:
+    if result and result.data:
         return result.data
 
     # Create free subscription for new user
@@ -200,6 +200,8 @@ def update_subscription_from_stripe(
         .execute()
     )
 
+    existing_data = result.data if result else None
+
     update_data = {
         "stripe_customer_id": stripe_customer_id,
         "stripe_subscription_id": stripe_subscription_id,
@@ -211,15 +213,15 @@ def update_subscription_from_stripe(
     }
 
     # Set trial_start if transitioning to trialing and not already set
-    if status == "trialing" and result.data and not result.data.get("trial_start"):
+    if status == "trialing" and existing_data and not existing_data.get("trial_start"):
         update_data["trial_start"] = datetime.now(timezone.utc).isoformat()
 
-    if result.data:
+    if existing_data:
         # Update existing
         update_result = (
             supabase.table("subscriptions")
             .update(update_data)
-            .eq("id", result.data["id"])
+            .eq("id", existing_data["id"])
             .execute()
         )
         return update_result.data[0]
