@@ -31,6 +31,13 @@ const stageConfig = {
   mastered: { badge: "badge badge-success", label: "Mastered" },
 }
 
+function getStageFromLearningStage(learningStage: number): keyof typeof stageConfig {
+  if (learningStage === 0) return "new"
+  if (learningStage === 1) return "learning"
+  if (learningStage >= 5) return "mastered"
+  return "review"
+}
+
 export function MaterialView() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -265,18 +272,14 @@ export function MaterialView() {
                                     {card.grammar_note}
                                   </span>
                                 )}
-                                {card.stage && (
-                                  <span
-                                    className={cn(
-                                      "text-xs",
-                                      stageConfig[card.stage as keyof typeof stageConfig]?.badge ||
-                                        "badge badge-neutral"
-                                    )}
-                                  >
-                                    {stageConfig[card.stage as keyof typeof stageConfig]?.label ||
-                                      card.stage}
-                                  </span>
-                                )}
+                                <span
+                                  className={cn(
+                                    "text-xs",
+                                    stageConfig[getStageFromLearningStage(card.learning_stage)].badge
+                                  )}
+                                >
+                                  {stageConfig[getStageFromLearningStage(card.learning_stage)].label}
+                                </span>
                               </div>
                             </div>
                             {card.definition && (

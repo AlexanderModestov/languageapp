@@ -112,6 +112,33 @@ export function Dashboard() {
     subscription.tier === "free" &&
     subscription.uploads_this_week >= subscription.upload_limit
 
+  const statCards = [
+    {
+      label: "Total Cards",
+      value: statsLoading ? "-" : stats?.total_cards ?? 0,
+      icon: FileText,
+      color: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400",
+    },
+    {
+      label: "Due for Review",
+      value: statsLoading ? "-" : stats?.due_for_review ?? 0,
+      icon: TrendingUp,
+      color: "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400",
+    },
+    {
+      label: "Learning",
+      value: statsLoading ? "-" : stats?.learning ?? 0,
+      icon: BookOpen,
+      color: "bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400",
+    },
+    {
+      label: "Mastered",
+      value: statsLoading ? "-" : stats?.mastered ?? 0,
+      icon: Sparkles,
+      color: "bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400",
+    },
+  ]
+
   return (
     <Layout>
       <div className="space-y-8">
@@ -204,6 +231,7 @@ export function Dashboard() {
             </Card>
           )}
         </div>
+      </div>
       </div>
 
       {/* Upload Modal */}
