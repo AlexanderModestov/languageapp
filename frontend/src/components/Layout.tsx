@@ -1,4 +1,4 @@
-import { BookOpen, Home, Library, LogOut } from "lucide-react"
+import { BookOpen, CreditCard, Home, Library, LogOut } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 
 import { signOut } from "@/lib/supabase"
@@ -19,6 +19,7 @@ export function Layout({ children }: LayoutProps) {
     { name: "Dashboard", href: "/", icon: Home },
     { name: "Study", href: "/study", icon: BookOpen },
     { name: "Library", href: "/library", icon: Library },
+    { name: "Subscription", href: "/subscription", icon: CreditCard },
   ]
 
   const handleSignOut = async () => {

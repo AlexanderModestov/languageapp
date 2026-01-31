@@ -3,11 +3,13 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 
 import { Layout } from "@/components/Layout"
+import { UpgradeBanner } from "@/components/UpgradeBanner"
 import { UploadModal } from "@/components/UploadModal"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useCardStats } from "@/hooks/useCards"
 import { useMaterials } from "@/hooks/useMaterials"
+import { useSubscription } from "@/hooks/useSubscription"
 import type { Material } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -103,33 +105,12 @@ export function Dashboard() {
   const [showUpload, setShowUpload] = useState(false)
   const { data: materials, isLoading: materialsLoading } = useMaterials()
   const { data: stats, isLoading: statsLoading } = useCardStats()
+  const { data: subscription } = useSubscription()
 
-  const statCards = [
-    {
-      label: "Total Cards",
-      value: statsLoading ? "-" : stats?.total_cards ?? 0,
-      icon: FileText,
-      color: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400",
-    },
-    {
-      label: "Due for Review",
-      value: statsLoading ? "-" : stats?.due_for_review ?? 0,
-      icon: TrendingUp,
-      color: "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400",
-    },
-    {
-      label: "Learning",
-      value: statsLoading ? "-" : stats?.learning ?? 0,
-      icon: BookOpen,
-      color: "bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400",
-    },
-    {
-      label: "Mastered",
-      value: statsLoading ? "-" : stats?.mastered ?? 0,
-      icon: Sparkles,
-      color: "bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400",
-    },
-  ]
+  const isAtUploadLimit =
+    subscription &&
+    subscription.tier === "free" &&
+    subscription.uploads_this_week >= subscription.upload_limit
 
   return (
     <Layout>
@@ -139,6 +120,10 @@ export function Dashboard() {
           <h1 className="page-title">Dashboard</h1>
           <p className="page-subtitle">Track your learning progress</p>
         </div>
+
+      <div className="space-y-6">
+        {/* Upgrade Banner */}
+        {isAtUploadLimit && <UpgradeBanner variant="upload" />}
 
         {/* Stats Section */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger-children">

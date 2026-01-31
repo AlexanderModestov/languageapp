@@ -241,3 +241,33 @@ export const chatApi = {
   clear: (materialId: string): Promise<null> =>
     fetchWithAuth(`/chat/${materialId}`, { method: "DELETE" }),
 }
+
+// Subscription API
+export type SubscriptionStatus = "free" | "trialing" | "active" | "past_due" | "canceled"
+
+export type Subscription = {
+  status: SubscriptionStatus
+  tier: "free" | "pro"
+  trial_end: string | null
+  current_period_end: string | null
+  uploads_this_week: number
+  upload_limit: number
+  quizzes_per_material_limit: number
+  week_reset_at: string
+}
+
+export type CheckoutSession = {
+  checkout_url: string
+  session_id: string
+}
+
+export const subscriptionApi = {
+  get: (): Promise<Subscription> =>
+    fetchWithAuth("/payments/subscription"),
+
+  createCheckoutSession: (): Promise<CheckoutSession> =>
+    fetchWithAuth("/payments/create-checkout-session", { method: "POST" }),
+
+  cancel: (): Promise<null> =>
+    fetchWithAuth("/payments/cancel", { method: "POST" }),
+}

@@ -7,6 +7,8 @@ import { Library } from "./pages/Library"
 import { Login } from "./pages/Login"
 import { MaterialView } from "./pages/MaterialView"
 import { Study } from "./pages/Study"
+import { SubscriptionPage } from "./pages/SubscriptionPage"
+import { SubscriptionSuccess } from "./pages/SubscriptionSuccess"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth()
@@ -84,6 +86,22 @@ function App() {
         element={
           <ProtectedRoute>
             <Library />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/subscription"
+        element={
+          <ProtectedRoute>
+            <SubscriptionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/subscription/success"
+        element={
+          <ProtectedRoute>
+            <SubscriptionSuccess />
           </ProtectedRoute>
         }
       />
