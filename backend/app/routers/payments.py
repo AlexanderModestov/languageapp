@@ -369,3 +369,52 @@ async def cancel_user_subscription(
     # Return updated status
     data = get_subscription_response(current_user.id, supabase, settings)
     return SubscriptionResponse(**data)
+
+
+@router.post("/reactivate", response_model=SubscriptionResponse)
+async def reactivate_subscription(
+    current_user: CurrentUser = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase_client),
+    settings: Settings = Depends(get_settings),
+) -> SubscriptionResponse:
+    """Reactivate a subscription that was scheduled for cancellation."""
+    stripe.api_key = settings.stripe_secret_key
+
+    subscription = get_or_create_subscription(current_user.id, supabase)
+
+    if subscription.get("status") == "free":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No subscription to reactivate",
+        )
+
+    if not subscription.get("cancel_at_period_end"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Subscription is not scheduled for cancellation",
+        )
+
+    # Reactivate in Stripe
+    stripe_sub_id = subscription.get("stripe_subscription_id")
+    if stripe_sub_id:
+        try:
+            stripe.Subscription.modify(
+                stripe_sub_id,
+                cancel_at_period_end=False,
+            )
+        except stripe.error.StripeError as e:
+            logger.error(f"Failed to reactivate Stripe subscription: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to reactivate subscription",
+            )
+
+    # Update local status
+    supabase.table("subscriptions").update({
+        "cancel_at_period_end": False,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", subscription["id"]).execute()
+
+    # Return updated status
+    data = get_subscription_response(current_user.id, supabase, settings)
+    return SubscriptionResponse(**data)
