@@ -33,3 +33,14 @@ export function useCancelSubscription() {
     },
   })
 }
+
+export function useReactivateSubscription() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: subscriptionApi.reactivate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscription"] })
+    },
+  })
+}
