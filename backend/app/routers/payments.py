@@ -9,7 +9,6 @@ from app.core.config import Settings, get_settings
 from app.core.security import CurrentUser, get_current_user, get_supabase_client
 from app.models.subscription import CheckoutSessionResponse, SubscriptionResponse
 from app.services.subscription import (
-    cancel_subscription,
     get_or_create_subscription,
     get_subscription_response,
     update_subscription_from_stripe,
@@ -335,7 +334,7 @@ async def cancel_user_subscription(
     supabase: Client = Depends(get_supabase_client),
     settings: Settings = Depends(get_settings),
 ) -> SubscriptionResponse:
-    """Cancel the user's subscription immediately."""
+    """Cancel the user's subscription at period end."""
     stripe.api_key = settings.stripe_secret_key
 
     subscription = get_or_create_subscription(current_user.id, supabase)
@@ -346,16 +345,26 @@ async def cancel_user_subscription(
             detail="No active subscription to cancel",
         )
 
-    # Cancel in Stripe
+    # Cancel at period end in Stripe
     stripe_sub_id = subscription.get("stripe_subscription_id")
     if stripe_sub_id:
         try:
-            stripe.Subscription.cancel(stripe_sub_id)
+            stripe.Subscription.modify(
+                stripe_sub_id,
+                cancel_at_period_end=True,
+            )
         except stripe.error.StripeError as e:
             logger.error(f"Failed to cancel Stripe subscription: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to cancel subscription",
+            )
 
-    # Update local status
-    cancel_subscription(current_user.id, supabase)
+    # Update local status to reflect pending cancellation
+    supabase.table("subscriptions").update({
+        "cancel_at_period_end": True,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", subscription["id"]).execute()
 
     # Return updated status
     data = get_subscription_response(current_user.id, supabase, settings)
