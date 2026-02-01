@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Layout } from "@/components/Layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useCancelSubscription, useCreateCheckoutSession, useSubscription } from "@/hooks/useSubscription"
+import { useCancelSubscription, useCreateCheckoutSession, useReactivateSubscription, useSubscription } from "@/hooks/useSubscription"
 import type { SubscriptionStatus } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -171,9 +171,12 @@ function FreeUserView() {
 function ProUserView() {
   const { data: subscription } = useSubscription()
   const cancelSubscription = useCancelSubscription()
+  const reactivateSubscription = useReactivateSubscription()
   const [showConfirm, setShowConfirm] = useState(false)
 
   if (!subscription) return null
+
+  const isCancelled = subscription.cancel_at_period_end
 
   const handleCancel = () => {
     cancelSubscription.mutate(undefined, {
@@ -181,16 +184,21 @@ function ProUserView() {
     })
   }
 
+  const handleReactivate = () => {
+    reactivateSubscription.mutate()
+  }
+
   const getStatusMessage = () => {
+    if (isCancelled) {
+      return `Your subscription is cancelled. You have Pro access until ${formatDate(subscription.current_period_end)}.`
+    }
     switch (subscription.status) {
       case "trialing":
-        return `Your trial ends ${formatDate(subscription.trial_end)}`
+        return `Your trial ends ${formatDate(subscription.trial_end)}. You'll be charged €20/month after.`
       case "active":
-        return `Your next billing date is ${formatDate(subscription.current_period_end)}`
+        return `Pro Plan - €20/month. Next billing date: ${formatDate(subscription.current_period_end)}`
       case "past_due":
         return "Payment failed. Please update your payment method."
-      case "canceled":
-        return `Access until ${formatDate(subscription.current_period_end)}`
       default:
         return ""
     }
@@ -205,13 +213,35 @@ function ProUserView() {
               <CardTitle className="text-xl">Pro Plan</CardTitle>
               <CardDescription className="mt-1">€20/month</CardDescription>
             </div>
-            <StatusBadge status={subscription.status} />
+            <div className="flex items-center gap-2">
+              {isCancelled && (
+                <span className="text-xs font-medium px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">
+                  Cancelled
+                </span>
+              )}
+              <StatusBadge status={subscription.status} />
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">{getStatusMessage()}</p>
 
-          {!showConfirm ? (
+          {isCancelled ? (
+            <Button
+              variant="default"
+              onClick={handleReactivate}
+              disabled={reactivateSubscription.isPending}
+            >
+              {reactivateSubscription.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Reactivating...
+                </>
+              ) : (
+                "Reactivate Subscription"
+              )}
+            </Button>
+          ) : !showConfirm ? (
             <Button
               variant="ghost"
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -221,9 +251,9 @@ function ProUserView() {
             </Button>
           ) : (
             <div className="p-4 bg-destructive/10 rounded-lg space-y-3">
-              <p className="text-sm font-medium">Are you sure?</p>
+              <p className="text-sm font-medium">Are you sure you want to cancel?</p>
               <p className="text-sm text-muted-foreground">
-                You'll lose Pro features immediately.
+                You'll keep Pro access until {formatDate(subscription.current_period_end)}, then be downgraded to Free.
               </p>
               <div className="flex gap-2">
                 <Button
@@ -247,7 +277,7 @@ function ProUserView() {
                   onClick={() => setShowConfirm(false)}
                   disabled={cancelSubscription.isPending}
                 >
-                  Keep Pro
+                  Keep Subscription
                 </Button>
               </div>
             </div>

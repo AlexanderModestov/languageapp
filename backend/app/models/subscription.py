@@ -20,6 +20,7 @@ class SubscriptionResponse(BaseModel):
     tier: Literal["free", "pro"]
     trial_end: Optional[datetime] = None
     current_period_end: Optional[datetime] = None
+    cancel_at_period_end: bool = False
     uploads_used: int
     uploads_limit: int
     quizzes_per_material_limit: int

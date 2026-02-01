@@ -250,6 +250,7 @@ export type Subscription = {
   tier: "free" | "pro"
   trial_end: string | null
   current_period_end: string | null
+  cancel_at_period_end: boolean
   uploads_this_week: number
   upload_limit: number
   quizzes_per_material_limit: number
@@ -268,6 +269,9 @@ export const subscriptionApi = {
   createCheckoutSession: (): Promise<CheckoutSession> =>
     fetchWithAuth("/payments/create-checkout-session", { method: "POST" }),
 
-  cancel: (): Promise<null> =>
+  cancel: (): Promise<Subscription> =>
     fetchWithAuth("/payments/cancel", { method: "POST" }),
+
+  reactivate: (): Promise<Subscription> =>
+    fetchWithAuth("/payments/reactivate", { method: "POST" }),
 }

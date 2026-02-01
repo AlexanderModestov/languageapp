@@ -9,7 +9,6 @@ from app.core.config import Settings, get_settings
 from app.core.security import CurrentUser, get_current_user, get_supabase_client
 from app.models.subscription import CheckoutSessionResponse, SubscriptionResponse
 from app.services.subscription import (
-    cancel_subscription,
     get_or_create_subscription,
     get_subscription_response,
     update_subscription_from_stripe,
@@ -181,6 +180,7 @@ async def handle_subscription_updated(subscription: dict, supabase: Client):
     customer_id = subscription.get("customer")
     subscription_id = subscription.get("id")
     stripe_status = subscription.get("status")
+    cancel_at_period_end = subscription.get("cancel_at_period_end", False)
 
     # Map Stripe status to our status
     status_map = {
@@ -214,18 +214,18 @@ async def handle_subscription_updated(subscription: dict, supabase: Client):
     period_start = datetime.fromtimestamp(subscription["current_period_start"], tz=timezone.utc)
     period_end = datetime.fromtimestamp(subscription["current_period_end"], tz=timezone.utc)
 
-    update_subscription_from_stripe(
-        user_id=user_id,
-        stripe_customer_id=customer_id,
-        stripe_subscription_id=subscription_id,
-        status=status,
-        trial_end=trial_end,
-        current_period_start=period_start,
-        current_period_end=period_end,
-        supabase=supabase,
-    )
+    # Update subscription with cancel_at_period_end
+    supabase.table("subscriptions").update({
+        "stripe_subscription_id": subscription_id,
+        "status": status,
+        "trial_end": trial_end.isoformat() if trial_end else None,
+        "current_period_start": period_start.isoformat(),
+        "current_period_end": period_end.isoformat(),
+        "cancel_at_period_end": cancel_at_period_end,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("user_id", user_id).execute()
 
-    logger.info(f"Subscription updated for user {user_id}: {status}")
+    logger.info(f"Subscription updated for user {user_id}: {status}, cancel_at_period_end={cancel_at_period_end}")
 
 
 async def handle_subscription_deleted(subscription: dict, supabase: Client):
@@ -335,7 +335,7 @@ async def cancel_user_subscription(
     supabase: Client = Depends(get_supabase_client),
     settings: Settings = Depends(get_settings),
 ) -> SubscriptionResponse:
-    """Cancel the user's subscription immediately."""
+    """Cancel the user's subscription at period end."""
     stripe.api_key = settings.stripe_secret_key
 
     subscription = get_or_create_subscription(current_user.id, supabase)
@@ -346,16 +346,75 @@ async def cancel_user_subscription(
             detail="No active subscription to cancel",
         )
 
-    # Cancel in Stripe
+    # Cancel at period end in Stripe
     stripe_sub_id = subscription.get("stripe_subscription_id")
     if stripe_sub_id:
         try:
-            stripe.Subscription.cancel(stripe_sub_id)
+            stripe.Subscription.modify(
+                stripe_sub_id,
+                cancel_at_period_end=True,
+            )
         except stripe.error.StripeError as e:
             logger.error(f"Failed to cancel Stripe subscription: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to cancel subscription",
+            )
+
+    # Update local status to reflect pending cancellation
+    supabase.table("subscriptions").update({
+        "cancel_at_period_end": True,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", subscription["id"]).execute()
+
+    # Return updated status
+    data = get_subscription_response(current_user.id, supabase, settings)
+    return SubscriptionResponse(**data)
+
+
+@router.post("/reactivate", response_model=SubscriptionResponse)
+async def reactivate_subscription(
+    current_user: CurrentUser = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase_client),
+    settings: Settings = Depends(get_settings),
+) -> SubscriptionResponse:
+    """Reactivate a subscription that was scheduled for cancellation."""
+    stripe.api_key = settings.stripe_secret_key
+
+    subscription = get_or_create_subscription(current_user.id, supabase)
+
+    if subscription.get("status") == "free":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No subscription to reactivate",
+        )
+
+    if not subscription.get("cancel_at_period_end"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Subscription is not scheduled for cancellation",
+        )
+
+    # Reactivate in Stripe
+    stripe_sub_id = subscription.get("stripe_subscription_id")
+    if stripe_sub_id:
+        try:
+            stripe.Subscription.modify(
+                stripe_sub_id,
+                cancel_at_period_end=False,
+            )
+        except stripe.error.StripeError as e:
+            logger.error(f"Failed to reactivate Stripe subscription: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to reactivate subscription",
+            )
 
     # Update local status
-    cancel_subscription(current_user.id, supabase)
+    supabase.table("subscriptions").update({
+        "cancel_at_period_end": False,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", subscription["id"]).execute()
 
     # Return updated status
     data = get_subscription_response(current_user.id, supabase, settings)
