@@ -173,6 +173,7 @@ def get_subscription_response(user_id: UUID, supabase: Client, settings: Setting
         "tier": tier,
         "trial_end": subscription.get("trial_end"),
         "current_period_end": subscription.get("current_period_end"),
+        "cancel_at_period_end": subscription.get("cancel_at_period_end", False),
         "uploads_used": subscription.get("uploads_this_week", 0),
         "uploads_limit": settings.pro_uploads_per_week if tier == "pro" else settings.free_uploads_per_week,
         "quizzes_per_material_limit": settings.pro_quizzes_per_material if tier == "pro" else settings.free_quizzes_per_material,
