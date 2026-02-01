@@ -1,5 +1,6 @@
 # Environment
 */.env
+stripe_conf.md
 
 # Virtual environments
 backend/.venv/
